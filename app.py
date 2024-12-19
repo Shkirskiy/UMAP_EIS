@@ -17,7 +17,7 @@ import dash
 # Load data
 df = pd.read_csv('interpolated_exp_data_with_current_and_times.csv')
 
-size_of_plots = 450
+size_of_plots = 600
 
 # Group by Spectrum_id
 groups = df.groupby('Spectrum_id')
