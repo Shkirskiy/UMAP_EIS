@@ -123,3 +123,4 @@ werkzeug==3.0.6
 y-py==0.6.2
 ypy-websocket==0.8.4
 zipp==3.21.0
+gunicorn
