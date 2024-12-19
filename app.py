@@ -1,8 +1,8 @@
 import warnings
-# Filter out the FutureWarning about 'force_all_finite' -> 'ensure_all_finite'
+# Filter out the FutureWarning about 'force_all_finite'
 warnings.filterwarnings(
-    "ignore", 
-    category=FutureWarning, 
+    "ignore",
+    category=FutureWarning,
     message=".*'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.*"
 )
 
@@ -17,7 +17,7 @@ import dash
 # Load data
 df = pd.read_csv('interpolated_exp_data_with_current_and_times.csv')
 
-size_of_plots = 600
+size_of_plots = 450
 
 # Group by Spectrum_id
 groups = df.groupby('Spectrum_id')
@@ -90,9 +90,11 @@ for (_, file_name, current, time_h) in spectra_info:
     hover_texts.append(hover_str)
 
 # Color by Current for visualization
-color = [info[2] if (info[2] is not None and not pd.isna(info[2])) else 0 for info in spectra_info]
+color = [
+    info[2] if (info[2] is not None and not pd.isna(info[2])) else 0
+    for info in spectra_info
+]
 
-# Create initial figures
 scatter_fig = go.Figure(data=[
     go.Scatter(
         x=embedding[:, 0],
@@ -105,12 +107,11 @@ scatter_fig = go.Figure(data=[
 ])
 scatter_fig.update_layout(title='UMAP of Spectra', width=size_of_plots, height=size_of_plots)
 
-# Initial Nyquist figure (empty)
 nyquist_orig_fig = go.Figure()
 nyquist_orig_fig.update_layout(title='Nyquist Plot (Original)', width=size_of_plots, height=size_of_plots)
 
-# Build Dash app
 app = Dash(__name__)
+server = app.server  # Expose the server for gunicorn or other WSGI servers
 
 app.layout = html.Div([
     html.Div([
@@ -127,7 +128,6 @@ app.layout = html.Div([
     ])
 ])
 
-# Callback to update nyquist plot based on selected point
 @app.callback(
     Output('nyquist-plot', 'figure'),
     Input('umap-scatter', 'clickData')
@@ -172,6 +172,3 @@ def update_nyquist(clickData):
     )
 
     return fig
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
