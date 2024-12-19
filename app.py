@@ -72,7 +72,7 @@ for i, (spec_id, group) in enumerate(groups):
 spectra_vectors = np.array(spectra_vectors)
 
 # Apply UMAP
-reducer = umap.UMAP(n_components=2, n_neighbors=50, min_dist=0.3)
+reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=50, min_dist=0.3)
 embedding = reducer.fit_transform(spectra_vectors)
 
 # Generate hover texts for Current and Time
