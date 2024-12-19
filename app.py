@@ -1,8 +1,8 @@
 import warnings
-# Filter out the FutureWarning about 'force_all_finite'
+# Filter out the FutureWarning about 'force_all_finite' -> 'ensure_all_finite'
 warnings.filterwarnings(
-    "ignore",
-    category=FutureWarning,
+    "ignore", 
+    category=FutureWarning, 
     message=".*'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.*"
 )
 
@@ -13,9 +13,12 @@ import plotly.graph_objects as go
 
 from dash import Dash, html, dcc, Input, Output
 import dash
+import os
 
 # Load data
-df = pd.read_csv('interpolated_exp_data_with_current_and_times.csv')
+# Ensure that your CSV file is included in the repository. If it's large, consider hosting it elsewhere.
+data_file = 'interpolated_exp_data_with_current_and_times.csv'
+df = pd.read_csv(data_file)
 
 size_of_plots = 600
 
@@ -89,51 +92,75 @@ for (_, file_name, current, time_h) in spectra_info:
         hover_str += "Time: None"
     hover_texts.append(hover_str)
 
-# Color by Current for visualization
-color = [
-    info[2] if (info[2] is not None and not pd.isna(info[2])) else 0
-    for info in spectra_info
-]
-
-scatter_fig = go.Figure(data=[
-    go.Scatter(
-        x=embedding[:, 0],
-        y=embedding[:, 1],
-        mode='markers',
-        marker=dict(color=color, colorscale='Viridis', showscale=True),
-        text=hover_texts,
-        hovertemplate="%{text}<extra></extra>",
-    )
-])
-scatter_fig.update_layout(title='UMAP of Spectra', width=size_of_plots, height=size_of_plots)
-
-nyquist_orig_fig = go.Figure()
-nyquist_orig_fig.update_layout(title='Nyquist Plot (Original)', width=size_of_plots, height=size_of_plots)
-
+# Build Dash app
 app = Dash(__name__)
-server = app.server  # Expose the server for gunicorn or other WSGI servers
+server = app.server  # Expose the underlying Flask server for deployment
 
 app.layout = html.Div([
     html.Div([
+        html.Label("Color by:"),
+        dcc.RadioItems(
+            id='color-by-radio',
+            options=[
+                {'label': 'Current', 'value': 'current'},
+                {'label': 'Time', 'value': 'time'}
+            ],
+            value='current',  # Default selection
+            style={'margin-bottom': '20px'}
+        )
+    ]),
+    html.Div([
         dcc.Graph(
             id='umap-scatter',
-            figure=scatter_fig,
             style={'display': 'inline-block', 'vertical-align': 'top'}
         ),
         dcc.Graph(
             id='nyquist-plot',
-            figure=nyquist_orig_fig,
             style={'display': 'inline-block', 'vertical-align': 'top'}
         )
     ])
 ])
 
+# Callback to update the UMAP scatter based on selected coloring
+@app.callback(
+    Output('umap-scatter', 'figure'),
+    Input('color-by-radio', 'value')
+)
+def update_umap_scatter(color_by):
+    if color_by == 'current':
+        # Color by current
+        colors = [info[2] if (info[2] is not None and not pd.isna(info[2])) else 0 for info in spectra_info]
+        color_title = "Current (A/cm²)"
+    else:
+        # Color by time
+        colors = [info[3] if (info[3] is not None and not pd.isna(info[3])) else 0 for info in spectra_info]
+        color_title = "Time (h)"
+
+    scatter_fig = go.Figure(data=[
+        go.Scatter(
+            x=embedding[:, 0],
+            y=embedding[:, 1],
+            mode='markers',
+            marker=dict(
+                color=colors, 
+                colorscale='Viridis', 
+                showscale=True,
+                colorbar=dict(title=color_title)
+            ),
+            text=hover_texts,
+            hovertemplate="%{text}<extra></extra>",
+        )
+    ])
+    scatter_fig.update_layout(title='UMAP of Spectra', width=size_of_plots, height=size_of_plots)
+    return scatter_fig
+
+# Callback to update nyquist plot based on selected point
 @app.callback(
     Output('nyquist-plot', 'figure'),
     Input('umap-scatter', 'clickData')
 )
 def update_nyquist(clickData):
-    # If no point is clicked, return the empty figure
+    # If no point is clicked, return an empty figure
     if clickData is None:
         fig = go.Figure()
         fig.update_layout(title='Nyquist Plot (Original)', width=size_of_plots, height=size_of_plots)
